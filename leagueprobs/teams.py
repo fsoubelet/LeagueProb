@@ -12,7 +12,8 @@ class Team:
         self.name = name
         self.matches = matches
 
-    def number_of_wins(self) -> int:
+    @property
+    def wins(self) -> int:
         """Return the current number of wins for this team so far."""
         logger.debug(f"Counting {self.name}'s wins so far")
         return sum(1 for match in self.matches if match.winner == self.name)

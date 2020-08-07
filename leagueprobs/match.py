@@ -23,8 +23,8 @@ class Match:
         """
         if not self.result:
             logger.debug(
-                f"Winner for match '{self.teams[0]} vs {self.teams[1]}' demanded but the result "
-                f"being '{self.result[0]}-{self.result[1]}' indicated no winner, returning None"
+                f"Week {self.week}: '{self.teams[0]} vs {self.teams[1]}' either hasn't played or "
+                f"is a draw, indicating no winner yet"
             )
             return None
         elif self.result[0] > self.result[1]:

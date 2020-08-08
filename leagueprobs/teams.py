@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 from loguru import logger
 
@@ -16,13 +16,24 @@ class Team:
         return f"Team({self.name})"
 
     def __repr__(self):
-        return f"Team({self.name}"
+        return f"Team({self.name})"
 
     @property
     def wins(self) -> int:
         """Return the current number of wins for this team so far."""
-        logger.debug(f"Counting {self.name}'s wins so far")
+        logger.trace(f"Counting {self.name}'s wins so far")
         return sum(1 for match in self.matches if match.winner == self.name)
+
+    @property
+    def losses(self) -> int:
+        """Return the current number of losses for this team so far"""
+        logger.trace(f"Counting {self.name}'s losses so far")
+        return sum(1 for match in self.matches if match.winner and match.winner != self.name)
+
+    @property
+    def record(self) -> Tuple[int]:
+        """Returns the team's current record as a tuple of (wins, losses)."""
+        return self.wins, self.losses
 
     def head_to_head_wins(self, other_teams: List) -> int:
         """

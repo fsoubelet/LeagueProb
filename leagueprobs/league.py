@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from loguru import logger
 
@@ -40,36 +40,47 @@ class League:
         )
 
     @property
-    def table(self) -> Dict[str, int]:
+    def table(self) -> Dict[str, Tuple[int, int]]:
         """
-        Dictionary of team names and their current amount of wins. The dictionary is ordered,
-        from the team with the most wins (first) to the one with the least amount of wins (last)
+        Dictionary of team names and their current record. The dictionary is ordered, from the team
+        with the most wins (first) to the one with the least amount of wins (last). In case of
+        tie, the sorting is alphabetically on the team names but that's fine since table is not
+        the standings.
 
         Returns:
             The self.table dictionary.
         """
-        logger.debug(f"Returning ordered table for {self.name} {self.year} {self.season}")
-        table = {team.name: team.wins for team in self.teams}
+        logger.trace(f"Getting ordered table for {self.name} {self.year} {self.season}")
+        table = {team.name: team.record for team in self.teams}
         return {
-            name: wins
-            for name, wins in sorted(table.items(), key=lambda item: item[1], reverse=True)
+            name: record
+            for name, record in sorted(table.items(), key=lambda item: item[1][0], reverse=True)
         }
 
-    def make_standings(self) -> Dict[int, str]:
+    def make_standings(self) -> Dict[int, List[str]]:
         """
-        Returns a dictionary of ranking and team names. The dictionary is equivalent to self.table
-        but the keys are rankings (integers) and the values are team names.
+        Returns a dictionary of rankings and team names. The dictionary is equivalent to self.table
+        but the keys are rankings (integers) and the values are list of team names for each
+        ranking (since several teams can have the same record, they can have the same ranking).
 
         Returns:
             The dictionary.
         """
         logger.debug(f"Getting current {self.name} {self.year} {self.season} standings")
-        standings = {
-            element[0]: element[1]
-            for element in list(zip(range(1, len(self.table) + 1), self.table.keys()))
-        }
-        # TODO: tiebreaker
-        # self.tiebreaker(standings)
+        teams_by_wins = teams_by_records(self.table)
+
+        standings: Dict[int, List[str]] = {}
+        next_rank: int = 1
+        for record, teams in teams_by_wins.items():
+            insert_rank: int = next_rank
+            logger.trace(f"Rank {insert_rank} corresponds to team record {record}")
+            if not standings.get(insert_rank):
+                logger.trace(f"Creating entry for rank {insert_rank}")
+                standings[insert_rank] = []
+            for team_name in teams:
+                logger.trace(f"Team {team_name} inserted at rank {insert_rank}")
+                standings[insert_rank].append(team_name)
+                next_rank += 1
         return standings
 
     def _set_standing_for_team(self, team_name: str, standing: int) -> None:
@@ -120,8 +131,30 @@ def get_league_from_matches(name: str, year: int, season: str, matches: List[Mat
                 league_teams[team].matches.append(match)
 
     teams_list: List[Team] = list(league_teams.values())
-    logger.debug("Constructing League object from gatheres Teams")
+    logger.debug("Constructing League object from gathered Teams")
     return League(name, year, season, teams=teams_list)
+
+
+def teams_by_records(league_table: Dict[str, Tuple[int, int]]) -> Dict[Tuple[int, int], List[str]]:
+    """
+    Return the league's table organized by records. The returned dictionary has team records as
+    keys, and as values a list of the teams that have this record. The keys (records) are
+    ordered, from the one with the most wins to the one with the least wins.
+
+    Args:
+        league_table (Dict[str, Tuple[int, int]]): a league's table.
+
+    Returns:
+        A dictionary.
+    """
+    teams_by_record: Dict[Tuple[int, int], List[str]] = {}
+
+    logger.debug("Getting league table organized by wins")
+    for team_name, team_record in league_table.items():
+        if not teams_by_record.get(team_record):
+            teams_by_record[team_record]: List[str] = []
+        teams_by_record[team_record].append(team_name)
+    return teams_by_record
 
 
 def _get_dict_key(dictionary: dict, value):

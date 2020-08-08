@@ -107,3 +107,8 @@ class GamepediaScraper:
             logger.exception(
                 f"An error occured when trying to dump matches to '{self.output_file.absolute()}'"
             )
+
+    def scrape_league(self) -> None:
+        """Scrape matches and output the data."""
+        self.get_matches()
+        self.save_matches()

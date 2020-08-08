@@ -34,7 +34,7 @@ class Match:
             The name of the winning team, if there is a winning team (bo2 formats are weird).
         """
         if not self.result:
-            logger.debug(
+            logger.trace(
                 f"Week {self.week}: '{self.teams[0]} vs {self.teams[1]}' either hasn't played or "
                 f"is a draw, indicating no winner yet"
             )

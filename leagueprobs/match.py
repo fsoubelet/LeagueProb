@@ -14,16 +14,16 @@ class Match:
         self.result = result
 
     def __str__(self):
-        return f"Match({self.teams[1]}-{self.teams[1]})"
+        return f"Match({self.teams[0]}-{self.teams[1]})"
 
     def __repr__(self):
         if self.result:
             return (
-                f"Match[{self.teams[1]}-{self.teams[1]} in week {self.week} with result "
-                f"{self.result}]"
+                f"Match[{self.teams[0]} ({self.result[0]} - {self.result[1]}) {self.teams[1]} "
+                f"in week {self.week}]"
             )
         else:
-            return f"Match[{self.teams[1]}-{self.teams[1]} in week {self.week}, winner tbd]"
+            return f"Match[{self.teams[0]} ? - ? {self.teams[1]} in week {self.week}]"
 
     @property
     def winner(self) -> Union[str, None]:

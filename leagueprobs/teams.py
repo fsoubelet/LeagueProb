@@ -12,6 +12,12 @@ class Team:
         self.name = name
         self.matches = matches
 
+    def __str__(self):
+        return f"Team({self.name})"
+
+    def __repr__(self):
+        return f"Team({self.name}"
+
     @property
     def wins(self) -> int:
         """Return the current number of wins for this team so far."""

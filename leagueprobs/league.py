@@ -52,10 +52,8 @@ class League:
         """
         logger.trace(f"Getting ordered table for {self.name} {self.year} {self.season}")
         table = {team.name: team.record for team in self.teams}
-        return {
-            name: record
-            for name, record in sorted(table.items(), key=lambda item: item[1][0], reverse=True)
-        }
+        # Sort in reversing order by wins (most to least) and minus losses (so least to top losses)
+        return dict(sorted(table.items(), key=lambda item: (item[1][0], -item[1][1]), reverse=True))
 
     def make_standings(self) -> Dict[int, List[str]]:
         """
@@ -64,7 +62,7 @@ class League:
         ranking (since several teams can have the same record, they can have the same ranking).
 
         Returns:
-            The dictionary.
+            The standings dictionary.
         """
         logger.debug(f"Getting current {self.name} {self.year} {self.season} standings")
         teams_by_wins = teams_by_records(self.table)
@@ -91,13 +89,32 @@ class League:
             team_name (str): the team's name.
             standing (int): the rank at which to insert this team.
         """
-        if team_name in self.standings.values():
-            logger.debug(f"'{team_name}' already present in {self.name}.standings, removing")
-            del self.standings[_get_dict_key(dictionary=self.standings, value=team_name)]
-        logger.debug(
-            f"Inserting team {team_name} into {self.name}.standings at standing" f" {standing}"
-        )
-        self.standings[standing] = team_name
+        self._remove_team_from_standings(team_to_reset=team_name)
+
+        logger.debug(f"Inserting team '{team_name}' into {self.name} standings at rank {standing}")
+        if standing not in self.standings.keys():
+            logger.trace(f"Standing {standing} wasn't present and will be created")
+            self.standings[standing]: List[str] = []
+        self.standings[standing].append(team_name)
+
+        logger.trace("Re-sorting standings by rankings")
+        self.standings = dict(sorted(self.standings.items()))
+
+    def _remove_team_from_standings(self, team_to_reset: str) -> None:
+        """Removes a team from the self.standings attribute.
+
+        Args:
+            team_to_reset (str): name of the team to remove.
+        """
+        for rank, teams in self.standings.items():
+            if team_to_reset in teams:
+                logger.debug(f"Removing {team_to_reset} from rank {rank} in the standings")
+                teams.remove(team_to_reset)
+                if not self.standings[rank]:
+                    logger.trace(f"Rank {rank} now empty, removing it from the standings")
+                    del self.standings[rank]
+                return
+        logger.debug(f"Team {team_to_reset} was not in the standings")
 
     @staticmethod
     def tiebreaker(self) -> None:

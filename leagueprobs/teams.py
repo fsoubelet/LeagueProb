@@ -18,7 +18,7 @@ class Team:
         logger.debug(f"Counting {self.name}'s wins so far")
         return sum(1 for match in self.matches if match.winner == self.name)
 
-    def head_to_head_wins(self, other_teams: List[Team]) -> int:
+    def head_to_head_wins(self, other_teams: List) -> int:
         """
         Return the number of wins against the teams in other_teams.
 

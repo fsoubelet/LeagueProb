@@ -117,12 +117,24 @@ class League:
                 return
         logger.debug(f"Team {team_to_reset} was not in the standings")
 
-    def tiebreaker(self) -> None:
-        self.head_to_head()
-        self.wins_in_second_half()
+    def make_tiebreaker(self) -> None:
+        """
+        Tries to solve ties, first from head-to-head wins and then based on wins in the second
+        half of the split. In case ties still happen aftwerwards, then actual tiebreaker matches
+        would have to be played.
+        """
+        self._solve_ties_through_head_to_heads()
+        self._solve_ties_through_wins_in_second_half()
 
-    def head_to_head(self) -> None:
-        """Does?"""
+    def _solve_ties_through_head_to_heads(self) -> None:
+        """
+        Goes through the standings and tries to solves ties by head-to-head wins. The
+        head-to-head wins are calculated for teams tied for the same position, and they are
+        ranked based on those head-to-head wins. In case ties still happen, the amount of wins
+        in the second half of the split should be used to solve the ties.
+        """
+        logger.debug(f"Trying to solve head-to-heads for {self.name} {self.season} {self.year}")
+
         logger.trace("Copying standings dictionary")
         standings_copy = copy.deepcopy(self.standings)
 
@@ -136,20 +148,67 @@ class League:
                         self.teams[other_team]
                         for other_team in teams_at_this_rank
                         if other_team != team_name
-                    ]  # getting Team object of other teams at this rank
+                    ]  # getting Team objects of other teams at this rank
                     teams_h2h_wins[team_name] = self.teams[team_name].head_to_head_wins(other_teams)
 
                 logger.trace("Organizing head-to-head results by wins")
                 # 'teams_by_records' also works with wins instead of records
                 teams_h2h_wins: Dict[int, List[str]] = teams_by_records(teams_h2h_wins)
 
-                head_to_head_placing: Dict[str, Tuple[int, int]] = {}
+                logger.trace("Determining placings from head-to-heads")
+                head_to_head_placing: Dict[int, List[str]] = {}
                 place_teams_in_rankings(
                     teams_to_place_by_wins=teams_h2h_wins,
                     ranking_dict=head_to_head_placing,
                     next_rank=0,
                 )
+
+                logger.trace("Inserting teams back in standings")
                 for placing, teams_at_this_placing in head_to_head_placing.items():
+                    for team_name in teams_at_this_placing:
+                        if placing == 0:
+                            continue
+                        self._remove_team_from_standings(team_name)
+                        self._set_standing_for_team(team_name, rank + placing)
+
+    def _solve_ties_through_wins_in_second_half(self) -> None:
+        """
+        Goes through the standings and tries to solves ties based on second half of split wins.
+        Those wins are calculated for teams tied for the same position, and they are ranked based
+        on those wins. In case ties still happen, an actual tiebreaker match should be played.
+        """
+        logger.debug(f"Trying to solve last ties for {self.name} {self.season} {self.year}")
+
+        logger.trace("Copying standings dictionary")
+        standings_copy = copy.deepcopy(self.standings)
+
+        for rank, teams_at_this_rank in standings_copy.items():
+            tied_teams: Dict[str, int] = {}
+            if len(teams_at_this_rank) > 1:
+                logger.trace(f"Several teams tied at rank {rank}, looking at head-to-head wins")
+                for _, team_name in enumerate(teams_at_this_rank):
+                    logger.trace(f"Getting second half of split wins for team {team_name}")
+                    other_teams: List[Team] = [
+                        self.teams[other_team]
+                        for other_team in teams_at_this_rank
+                        if other_team != team_name
+                    ]  # getting Team objects of other teams at this rank
+                    tied_teams[team_name] = self.teams[team_name].wins_in_second_half()
+
+                logger.trace("Ranking tied teams by wins in second half")
+                # 'teams_by_records' also works with wins instead of records
+                teams_second_half_wins: Dict[int, List[str]] = teams_by_records(tied_teams)
+
+                logger.trace("Determining placings from second half of split wins")
+                wins_in_second_half_placing: Dict[int, List[str]] = {}
+                place_teams_in_rankings(
+                    teams_to_place_by_wins=teams_second_half_wins,
+                    ranking_dict=wins_in_second_half_placing,
+                    next_rank=0,
+                )
+
+                logger.trace("Inserting teams back in standings")
+                for placing, teams_at_this_placing in wins_in_second_half_placing.items():
                     for team_name in teams_at_this_placing:
                         if placing == 0:
                             continue

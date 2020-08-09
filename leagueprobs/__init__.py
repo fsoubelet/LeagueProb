@@ -1,5 +1,5 @@
 from .data import GamepediaScraper
-from .leagues import LCS, LEC, League
-from .match import Match
+from .league import League, get_league_from_matches, teams_by_records
+from .match import Match, get_matches_from_json
 from .possibility import PossibilityHandler
 from .teams import Team

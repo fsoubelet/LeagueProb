@@ -47,9 +47,7 @@ class Team:
         """
         wins: int = 0
 
-        logger.debug(
-            f"Gathering {self.name}'s matches against the provided opponents and counting wins"
-        )
+        logger.debug(f"Gathering {self.name}'s wins against the provided opponents: {other_teams}")
         for opponent in other_teams:
             matchups: List[Match] = [
                 match

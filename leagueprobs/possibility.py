@@ -8,7 +8,7 @@ from typing import Dict, List
 
 from loguru import logger
 
-from leagueprobs.leagues import League
+from leagueprobs.league import League
 from leagueprobs.match import Match, get_matches_from_json
 from leagueprobs.teams import Team
 

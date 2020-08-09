@@ -1,3 +1,4 @@
+import copy
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -17,17 +18,17 @@ class League:
             name (str): the league's name (LEC / LCS / LCK / LPL)
             year (int): the year being played
             season (str): the season in the year (either spring or summer)
-            teams (List[Team]): list of teams competing in the league.
+            teams (List[Team]): list of teams competing in the league, as Team objects.
         """
         self.name = name.upper()
         self.season = season.lower().capitalize()
-        self.teams = teams
+        self.teams: Dict[str, Team] = {team.name: team for team in teams}
         self.year = year
         self.gamepedia_url = (
             f"https://lol.gamepedia.com/{self.name}/{self.year}_Season/" f"{self.season}_Season"
         )
-        self.matches_file = Path(f"{self.name}_matches.json")
-        self.output_file = Path(f"{self.name}_output.md")
+        self.matches_file = Path(f"{self.name.lower()}_matches.json")
+        self.output_file = Path(f"{self.name.lower()}_output.md")
         self.standings = self.make_standings()
 
     def __str__(self):
@@ -36,7 +37,7 @@ class League:
     def __repr__(self):
         return (
             f"League[{self.name} {self.season} {self.year}] | "
-            f"Teams{list(team.name for team in self.teams)}"
+            f"Teams{list(team.name for team in self.teams.values())}"
         )
 
     @property
@@ -51,7 +52,7 @@ class League:
             The self.table dictionary.
         """
         logger.trace(f"Getting ordered table for {self.name} {self.year} {self.season}")
-        table = {team.name: team.record for team in self.teams}
+        table = {team.name: team.record for team in self.teams.values()}
         # Sort in reversing order by wins (most to least) and minus losses (so least to top losses)
         return dict(sorted(table.items(), key=lambda item: (item[1][0], -item[1][1]), reverse=True))
 
@@ -116,9 +117,44 @@ class League:
                 return
         logger.debug(f"Team {team_to_reset} was not in the standings")
 
-    @staticmethod
     def tiebreaker(self) -> None:
-        raise NotImplementedError
+        self.head_to_head()
+        self.wins_in_second_half()
+
+    def head_to_head(self) -> None:
+        """Does?"""
+        logger.trace("Copying standings dictionary")
+        standings_copy = copy.deepcopy(self.standings)
+
+        for rank, teams_at_this_rank in standings_copy.items():
+            teams_h2h_wins: Dict[str, int] = {}
+            if len(teams_at_this_rank) > 1:
+                logger.trace(f"Several teams tied at rank {rank}, looking at head-to-head wins")
+                for _, team_name in enumerate(teams_at_this_rank):
+                    logger.trace(f"Getting head-to-head wins for team {team_name}")
+                    other_teams: List[Team] = [
+                        self.teams[other_team]
+                        for other_team in teams_at_this_rank
+                        if other_team != team_name
+                    ]  # getting Team object of other teams at this rank
+                    teams_h2h_wins[team_name] = self.teams[team_name].head_to_head_wins(other_teams)
+
+                logger.trace("Organizing head-to-head results by wins")
+                # 'teams_by_records' also works with wins instead of records
+                teams_h2h_wins: Dict[int, List[str]] = teams_by_records(teams_h2h_wins)
+
+                head_to_head_placing: Dict[str, Tuple[int, int]] = {}
+                place_teams_in_rankings(
+                    teams_to_place_by_wins=teams_h2h_wins,
+                    ranking_dict=head_to_head_placing,
+                    next_rank=0,
+                )
+                for placing, teams_at_this_placing in head_to_head_placing.items():
+                    for team_name in teams_at_this_placing:
+                        if placing == 0:
+                            continue
+                        self._remove_team_from_standings(team_name)
+                        self._set_standing_for_team(team_name, rank + placing)
 
 
 def get_league_from_matches(name: str, year: int, season: str, matches: List[Match]) -> League:
@@ -174,7 +210,26 @@ def teams_by_records(league_table: Dict[str, Tuple[int, int]]) -> Dict[Tuple[int
     return teams_by_record
 
 
-def _get_dict_key(dictionary: dict, value):
-    for key, val in dictionary.items():
-        if val == value:
-            return key
+def place_teams_in_rankings(
+    teams_to_place_by_wins: Dict[int, List[str]],
+    ranking_dict: Dict[int, List[str]],
+    next_rank: int = 1,
+) -> None:
+    """
+    Inserts teams in ranking based on their amount of wins.
+
+    Args:
+        teams_to_place_by_wins (Dict[int, List[str]]): dict of teams organized by wins.
+        ranking_dict (Dict[int, List[str]]): the rankings in which to place teams.
+        next_rank (int): the rank at which to start inserting teams.
+    """
+    logger.trace("Inserting teams in rankings")
+    next_rank = next_rank
+    for wins, teams_with_these_wins in sorted(teams_to_place_by_wins.items(), reverse=True):
+        rank = next_rank
+        for team in teams_with_these_wins:
+            logger.trace(f"Inserting {team} at rank {rank}")
+            if not ranking_dict.get(rank):
+                ranking_dict[rank]: List[str] = []
+                ranking_dict[rank].append(team)
+                next_rank += 1

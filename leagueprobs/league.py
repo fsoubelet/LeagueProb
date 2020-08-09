@@ -29,7 +29,7 @@ class League:
         )
         self.matches_file = Path(f"{self.name.lower()}_matches.json")
         self.output_file = Path(f"{self.name.lower()}_output.md")
-        self.standings = self.make_standings()
+        self.standings = self._make_standings()
 
     def __str__(self):
         return f"{self.name} {self.season} {self.year}"
@@ -56,7 +56,7 @@ class League:
         # Sort in reversing order by wins (most to least) and minus losses (so least to top losses)
         return dict(sorted(table.items(), key=lambda item: (item[1][0], -item[1][1]), reverse=True))
 
-    def make_standings(self) -> Dict[int, List[str]]:
+    def _make_standings(self) -> Dict[int, List[str]]:
         """
         Returns a dictionary of rankings and team names. The dictionary is equivalent to self.table
         but the keys are rankings (integers) and the values are list of team names for each
@@ -92,7 +92,7 @@ class League:
         """
         self._remove_team_from_standings(team_to_reset=team_name)
 
-        logger.debug(f"Inserting team '{team_name}' into {self.name} standings at rank {standing}")
+        logger.trace(f"Inserting team '{team_name}' into {self.name} standings at rank {standing}")
         if standing not in self.standings.keys():
             logger.trace(f"Standing {standing} wasn't present and will be created")
             self.standings[standing]: List[str] = []
@@ -109,13 +109,13 @@ class League:
         """
         for rank, teams in self.standings.items():
             if team_to_reset in teams:
-                logger.debug(f"Removing {team_to_reset} from rank {rank} in the standings")
+                logger.trace(f"Removing {team_to_reset} from rank {rank} in the standings")
                 teams.remove(team_to_reset)
                 if not self.standings[rank]:
                     logger.trace(f"Rank {rank} now empty, removing it from the standings")
                     del self.standings[rank]
                 return
-        logger.debug(f"Team {team_to_reset} was not in the standings")
+        logger.trace(f"Team {team_to_reset} was not in the standings")
 
     def make_tiebreaker(self) -> None:
         """
@@ -130,10 +130,15 @@ class League:
         """
         Goes through the standings and tries to solves ties by head-to-head wins. The
         head-to-head wins are calculated for teams tied for the same position, and they are
-        ranked based on those head-to-head wins. In case ties still happen, the amount of wins
-        in the second half of the split should be used to solve the ties.
+        ranked based on those head-to-head wins. A new ranking among tied teams is made based on
+        who has the most head-to-head wins against the other tied teams. In this leaves ties (
+        same amount of head-to-head wins for several teams), the amount of wins in the second
+        half of the split should be used to solve the ties.
         """
-        logger.debug(f"Trying to solve head-to-heads for {self.name} {self.season} {self.year}")
+        logger.debug(
+            f"Trying to solve head-to-heads for {self.name} {self.season} {self.year} "
+            f"through head-to-head wins"
+        )
 
         logger.trace("Copying standings dictionary")
         standings_copy = copy.deepcopy(self.standings)
@@ -175,9 +180,14 @@ class League:
         """
         Goes through the standings and tries to solves ties based on second half of split wins.
         Those wins are calculated for teams tied for the same position, and they are ranked based
-        on those wins. In case ties still happen, an actual tiebreaker match should be played.
+        on those wins. A new ranking among tied teams is made based on who has the most wins in
+        the second half of the split. In case this leaves ties (same amount of wins in the second
+        half of split for several teams), an actual tiebreaker match should be played.
         """
-        logger.debug(f"Trying to solve last ties for {self.name} {self.season} {self.year}")
+        logger.debug(
+            f"Trying to solve last ties for {self.name} {self.season} {self.year} "
+            f"through second half of split wins"
+        )
 
         logger.trace("Copying standings dictionary")
         standings_copy = copy.deepcopy(self.standings)
@@ -261,7 +271,7 @@ def teams_by_records(league_table: Dict[str, Tuple[int, int]]) -> Dict[Tuple[int
     """
     teams_by_record: Dict[Tuple[int, int], List[str]] = {}
 
-    logger.debug("Getting league table organized by wins")
+    logger.trace("Getting league table organized by wins")
     for team_name, team_record in league_table.items():
         if not teams_by_record.get(team_record):
             teams_by_record[team_record]: List[str] = []

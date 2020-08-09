@@ -47,7 +47,7 @@ class Team:
         """
         wins: int = 0
 
-        logger.debug(f"Gathering {self.name}'s wins against the provided opponents: {other_teams}")
+        logger.trace(f"Gathering {self.name}'s wins against the provided opponents: {other_teams}")
         for opponent in other_teams:
             matchups: List[Match] = [
                 match
@@ -63,14 +63,14 @@ class Team:
         """Return the amount of wins in the second half of a split."""
         wins: int = 0
 
-        logger.debug(f"Gathering {self.name}'s matches for the second half of the split")
+        logger.trace(f"Gathering {self.name}'s matches for the second half of the split")
         second_half_matches: List[Match] = [
             match
             for match in self.matches
             if match.week > 4 and match.winner  # TODO: remove hardcoded week
         ]
 
-        logger.debug(f"Counting {self.name}'s wins in the second half of the split")
+        logger.trace(f"Counting {self.name}'s wins in the second half of the split")
         for match in second_half_matches:
             if match.winner == self.name:
                 wins += 1
